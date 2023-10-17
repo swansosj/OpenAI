@@ -935,19 +935,12 @@
     {
         "type": "Microsoft.Network/privateDnsZones",
         "apiVersion": "2018-09-01",
-        "name": "[variables('dnsZoneSites')]",
+        "name": "[variables('dnsZoneSearch')]",
         "location": "global",
         "dependsOn": [
             "[resourceId('Microsoft.Search/searchServices', variables('searchSvcName'))]",
             "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
         ],
-        "properties": {}
-    },
-    {
-        "type": "Microsoft.Network/privateDnsZones",
-        "apiVersion": "2018-09-01",
-        "name": "[variables('dnsZoneSearch')]",
-        "location": "global",
         "properties": {}
     },
     {
