@@ -189,6 +189,13 @@
             "metadata": {
                 "description": "description"
             }
+        },
+        "storageAccountNamePrefix": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
         }
     },
     "functions": [],
@@ -213,6 +220,7 @@
         "docServiceName": "[if(equals(parameters('docServiceName'),''), concat(parameters('customerName'), 'kts-cog-doc-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServiceName'))]",
         "docServicePeName": "[if(equals(parameters('docServicePeName'),''), concat('kts-pe-cog-doc-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServicePeName'))]",
         "docServicePeNicName": "[if(equals(parameters('docServicePeNicName'),''), concat('kts-nic-pe-cog-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServicePeNicName'))]",
+        "storageAccountName": "[concat(parameters('storageAccountNamePrefix'), uniqueString(subscription().id, resourceGroup().id))]",
         "dnsZoneSites": "privatelink.azurewebsites.net",
         "dnsZoneSearch": "privatelink.search.windows.net",
         "dnsZoneCognitive": "privatelink.cognitiveservices.azure.com"
@@ -1099,6 +1107,196 @@
             "virtualNetwork": {
                 "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
             }
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts",
+        "apiVersion": "2023-01-01",
+        "name": "[variables('storageAccountName')]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+            "name": "Standard_RAGRS",
+            "tier": "Standard"
+        },
+        "kind": "StorageV2",
+        "properties": {
+            "dnsEndpointType": "Standard",
+            "defaultToOAuthAuthentication": true,
+            "publicNetworkAccess": "Enabled",
+            "allowCrossTenantReplication": false,
+            "minimumTlsVersion": "TLS1_2",
+            "allowBlobPublicAccess": true,
+            "allowSharedKeyAccess": true,
+            "networkAcls": {
+                "resourceAccessRules": [],
+                "bypass": "AzureServices",
+                "virtualNetworkRules": [],
+                "ipRules": [
+                    {
+                        "value": "73.237.114.23",
+                        "action": "Allow"
+                    },
+                    {
+                        "value": "136.55.178.225",
+                        "action": "Allow"
+                    },
+                    {
+                        "value": "75.60.207.95",
+                        "action": "Allow"
+                    }
+                ],
+                "defaultAction": "Deny"
+            },
+            "supportsHttpsTrafficOnly": true,
+            "encryption": {
+                "requireInfrastructureEncryption": false,
+                "services": {
+                    "file": {
+                        "keyType": "Account",
+                        "enabled": true
+                    },
+                    "blob": {
+                        "keyType": "Account",
+                        "enabled": true
+                    }
+                },
+                "keySource": "Microsoft.Storage"
+            },
+            "accessTier": "Hot"
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts/blobServices",
+        "apiVersion": "2023-01-01",
+        "name": "[concat(variables('storageAccountName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        ],
+        "sku": {
+            "name": "Standard_RAGRS",
+            "tier": "Standard"
+        },
+        "properties": {
+            "cors": {
+                "corsRules": []
+            },
+            "deleteRetentionPolicy": {
+                "allowPermanentDelete": false,
+                "enabled": true,
+                "days": 7
+            },
+            "isVersioningEnabled": true,
+            "changeFeed": {
+                "enabled": false
+            },
+            "restorePolicy": {
+                "enabled": false
+            },
+            "containerDeleteRetentionPolicy": {
+                "enabled": true,
+                "days": 7
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts/fileServices",
+        "apiVersion": "2023-01-01",
+        "name": "[concat(variables('storageAccountName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        ],
+        "sku": {
+            "name": "Standard_RAGRS",
+            "tier": "Standard"
+        },
+        "properties": {
+            "protocolSettings": {
+                "smb": {}
+            },
+            "cors": {
+                "corsRules": []
+            },
+            "shareDeleteRetentionPolicy": {
+                "enabled": true,
+                "days": 7
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts/queueServices",
+        "apiVersion": "2023-01-01",
+        "name": "[concat(variables('storageAccountName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        ],
+        "properties": {
+            "cors": {
+                "corsRules": []
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts/tableServices",
+        "apiVersion": "2023-01-01",
+        "name": "[concat(variables('storageAccountName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        ],
+        "properties": {
+            "cors": {
+                "corsRules": []
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+        "apiVersion": "2023-01-01",
+        "name": "[concat(variables('storageAccountName'), '/default/attdocscontainer')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        ],
+        "properties": {
+            "immutableStorageWithVersioning": {
+                "enabled": false
+            },
+            "defaultEncryptionScope": "$account-encryption-key",
+            "denyEncryptionScopeOverride": false,
+            "publicAccess": "Container"
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+        "apiVersion": "2023-01-01",
+        "name": "[concat(variables('storageAccountName'), '/default/hrdocscontainer')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        ],
+        "properties": {
+            "immutableStorageWithVersioning": {
+                "enabled": false
+            },
+            "defaultEncryptionScope": "$account-encryption-key",
+            "denyEncryptionScopeOverride": false,
+            "publicAccess": "Container"
+        }
+    },
+    {
+        "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+        "apiVersion": "2023-01-01",
+        "name": "[concat(variables('storageAccountName'), '/default/ocgdocscontainer')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+        ],
+        "properties": {
+            "immutableStorageWithVersioning": {
+                "enabled": false
+            },
+            "defaultEncryptionScope": "$account-encryption-key",
+            "denyEncryptionScopeOverride": false,
+            "publicAccess": "Container"
         }
     }
     ],
