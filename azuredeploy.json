@@ -252,6 +252,27 @@
             "metadata": {
                 "description": "description"
             }
+        },
+        "openAiAccountName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "openAiPeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "openAiPeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
         }
     },
     "functions": [],
@@ -285,6 +306,9 @@
         "storageAccountTablePeNicName": "[if(equals(parameters('storageAccountTablePeNicName'),''), concat('kts-nic-pe-table-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountTablePeNicName'))]",
         "storageAccountQuePeName": "[if(equals(parameters('storageAccountQuePeName'),''), concat('kts-pe-que-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountQuePeName'))]",
         "storageAccountQuePeNicName": "[if(equals(parameters('storageAccountQuePeNicName'),''), concat('kts-nic-pe-que-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountQuePeNicName'))]",
+        "openAiAccountName": "[if(equals(parameters('openAiAccountName'),''), concat(parameters('customerName'), 'kts-cog-ai-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('openAiAccountName'))]",
+        "openAiPeName": "[if(equals(parameters('openAiPeName'),''), concat('kts-pe-ai-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('openAiPeName'))]",
+        "openAiPeNicName": "[if(equals(parameters('openAiPeNicName'),''), concat('kts-nic-pe-ai-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('openAiPeNicName'))]",
         "dnsZoneSites": "privatelink.azurewebsites.net",
         "dnsZoneSearch": "privatelink.search.windows.net",
         "dnsZoneCognitive": "privatelink.cognitiveservices.azure.com",
@@ -1662,6 +1686,95 @@
             "registrationEnabled": false,
             "virtualNetwork": {
                 "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.CognitiveServices/accounts",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('openAiAccountName')]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+            "name": "S0"
+        },
+        "kind": "OpenAI",
+        "properties": {
+            "customSubDomainName": "[variables('openAiAccountName')]",
+            "networkAcls": {
+                "defaultAction": "Deny",
+                "virtualNetworkRules": [],
+                "ipRules": []
+            },
+            "publicNetworkAccess": "Disabled"
+        }
+    },
+    {
+        "type": "Microsoft.CognitiveServices/accounts/deployments",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('openAiAccountName'), '/', variables('openAiAccountName'))]",
+        "dependsOn": [
+            "[resourceId('Microsoft.CognitiveServices/accounts', variables('openAiAccountName'))]"
+        ],
+        "sku": {
+            "name": "Standard",
+            "capacity": 30
+        },
+        "properties": {
+            "model": {
+                "format": "OpenAI",
+                "name": "gpt-4-32k",
+                "version": "0613"
+            },
+            "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
+            "raiPolicyName": "Microsoft.Default"
+        }
+    },
+    {
+        "type": "Microsoft.CognitiveServices/accounts/deployments",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('openAiAccountName'), '/', variables('openAiAccountName'), '-ADA')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.CognitiveServices/accounts', variables('openAiAccountName'))]"
+        ],
+        "sku": {
+            "name": "Standard",
+            "capacity": 350
+        },
+        "properties": {
+            "model": {
+                "format": "OpenAI",
+                "name": "text-embedding-ada-002",
+                "version": "2"
+            },
+            "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
+            "raiPolicyName": "Microsoft.Default"
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('openAiPeName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.CognitiveServices/accounts', variables('openAiAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+        ],
+        "properties": {
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[variables('openAiPeName')]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('openAiPeName')), concat('/privateLinkServiceConnections/', variables('openAiPeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', variables('openAiAccountName'))]",
+                        "groupIds": [
+                            "account"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('openAiPeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
             }
         }
     }
