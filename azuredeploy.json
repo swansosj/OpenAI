@@ -1407,7 +1407,7 @@
     {
         "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
         "apiVersion": "2023-05-01",
-        "name": "[concat(variables('docServicePeName'), '/default')]",
+        "name": "[concat(variables('storageAccountBlobPeName'), '/default')]",
         "dependsOn": [
             "[resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountBlobPeName'))]",
             "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneBlob'))]"
