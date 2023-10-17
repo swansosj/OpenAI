@@ -1143,6 +1143,10 @@
                     {
                         "value": "75.60.207.95",
                         "action": "Allow"
+                    },
+                    {
+                        "value": "73.35.40.188",
+                        "action": "Allow"
                     }
                 ],
                 "defaultAction": "Deny"
