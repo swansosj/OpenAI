@@ -147,6 +147,27 @@
             "metadata": {
                 "description": "description"
             }
+        },
+        "searchSvcName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "searchSvcPeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "searchSvcPeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
         }
     },
     "functions": [],
@@ -165,7 +186,11 @@
         "backEndAppName": "[if(equals(parameters('backEndAppName'),''), concat(parameters('customerName'), 'kts-func-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('backEndAppName'))]",
         "backEndPeName": "[if(equals(parameters('backEndPeName'),''), concat('kts-pe-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('backEndPeName'))]",
         "backEndPeNicName": "[if(equals(parameters('backEndPeNicName'),''), concat('kts-nic-pe-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('backEndPeNicName'))]",
-        "dnsZoneSites": "privatelink.azurewebsites.net"
+        "searchSvcName": "[if(equals(parameters('searchSvcName'),''), concat(parameters('customerName'), 'kts-srch-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('searchSvcName'))]",
+        "searchSvcPeName": "[if(equals(parameters('searchSvcPeName'),''), concat('kts-pe-srch-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('searchSvcPeName'))]",
+        "searchSvcPeNicName": "[if(equals(parameters('searchSvcPeNicName'),''), concat('kts-nic-pe-srch-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('searchSvcPeNicName'))]",
+        "dnsZoneSites": "privatelink.azurewebsites.net",
+        "dnsZoneSearch": "privatelink.search.windows.net"
     },
     "resources": [
     {
@@ -850,6 +875,109 @@
                     }
                 }
             ]
+        }
+    },
+    {
+        "type": "Microsoft.Search/searchServices",
+        "apiVersion": "2022-09-01",
+        "name": "[variables('searchSvcName')]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+            "name": "standard"
+        },
+        "identity": {
+            "type": "SystemAssigned"
+        },
+        "properties": {
+            "replicaCount": 1,
+            "partitionCount": 1,
+            "hostingMode": "Default",
+            "publicNetworkAccess": "Disabled",
+            "networkRuleSet": {
+                "ipRules": []
+            },
+            "encryptionWithCmk": {
+                "enforcement": "Unspecified"
+            },
+            "disableLocalAuth": false,
+            "authOptions": {
+                "apiKeyOnly": {}
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('searchSvcPeName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Search/searchServices', variables('searchSvcName'))]"
+        ],
+        "properties": {
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[concat(variables('searchSvcPeName'))]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('searchSvcPeName')), concat('/privateLinkServiceConnections/', variables('searchSvcPeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.Search/searchServices', variables('searchSvcName'))]",
+                        "groupIds": [
+                            "searchService"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('searchSvcPeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneSites')]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Search/searchServices', variables('searchSvcName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneSearch')]",
+        "location": "global",
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+        "apiVersion": "2018-09-01",
+        "name": "[format('{0}/{1}', variables('dnsZoneSearch'), format('{0}-link', variables('dnsZoneSearch')))]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSearch'))]"
+        ],
+        "properties": {
+            "registrationEnabled": false,
+            "virtualNetwork": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Search/searchServices/privateEndpointConnections",
+        "apiVersion": "2022-09-01",
+        "name": "[format('{0}/{1}', variables('searchSvcName'), format('{0}-connection', variables('searchSvcPeName')))]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Search/searchServices', variables('searchSvcName'))]",
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('searchSvcPeName'))]"
+        ],
+        "properties": {
+            "privateEndpoint": {
+                "id": "[resourceId('Microsoft.Network/privateEndpoints', variables('searchSvcPeName'))]"
+            },
+            "groupId": "searchService"
         }
     }
     ],
