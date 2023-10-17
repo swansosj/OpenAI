@@ -825,17 +825,6 @@
         }
     },
     {
-        "type": "Microsoft.Network/privateDnsZones",
-        "apiVersion": "2018-09-01",
-        "name": "[variables('dnsZoneSites')]",
-        "location": "global",
-        "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('backEndAppName'))]",
-            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
-        ],
-        "properties": {}
-    },
-    {
         "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
         "apiVersion": "2023-05-01",
         "name": "[concat(variables('backEndPeName'), '/default')]",
@@ -852,23 +841,6 @@
                     }
                 }
             ]
-        }
-    },
-    {
-        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-        "apiVersion": "2018-09-01",
-        "name": "[format('{0}/{1}', variables('dnsZoneSites'), format('{0}-link', variables('dnsZoneSites')))]",
-        "location": "global",
-        "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('backEndAppName'))]",
-            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSites'))]",
-            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
-        ],
-        "properties": {
-            "registrationEnabled": false,
-            "virtualNetwork": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
-            }
         }
     }
     ],
