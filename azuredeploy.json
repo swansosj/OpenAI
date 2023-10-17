@@ -279,7 +279,7 @@
             "dailyMemoryTimeQuota": 0,
             "httpsOnly": true,
             "redundancyMode": "None",
-            "publicNetworkAccess": "Enabled",
+            "publicNetworkAccess": "Disabled",
             "storageAccountRequired": false,
             "keyVaultReferenceIdentity": "SystemAssigned"
         }
