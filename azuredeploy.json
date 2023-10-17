@@ -203,7 +203,8 @@
         "apiVersion": "2023-05-01",
         "name": "[format('{0}/{1}', variables('vnetName'), variables('subnet2Name'))]",
         "dependsOn": [
-            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]",
+            "[resourceId('Microsoft.Network/natGateways', variables('natGtwy1Name'))]"
         ],
         "properties": {
             "addressPrefixes": [
@@ -231,7 +232,8 @@
         "apiVersion": "2023-05-01",
         "name": "[format('{0}/{1}', variables('vnetName'), variables('subnet3Name'))]",
         "dependsOn": [
-            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet2Name'))]",
+            "[resourceId('Microsoft.Network/natGateways', variables('natGtwy2Name'))]"
         ],
         "properties": {
             "addressPrefixes": [
