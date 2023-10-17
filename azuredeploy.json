@@ -658,6 +658,7 @@
                 }
             ],
             "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('backEndAppName'))]",
+            "virtualNetworkSubnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet3Name'))]",
             "reserved": false,
             "isXenon": false,
             "hyperV": false,
@@ -681,7 +682,6 @@
             "dailyMemoryTimeQuota": 0,
             "httpsOnly": true,
             "redundancyMode": "None",
-            "publicNetworkAccess": "Disabled",
             "storageAccountRequired": false,
             "keyVaultReferenceIdentity": "SystemAssigned"
         }
