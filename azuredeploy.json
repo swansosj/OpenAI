@@ -168,6 +168,27 @@
             "metadata": {
                 "description": "description"
             }
+        },
+        "docServiceName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "docServicePeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "docServicePeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
         }
     },
     "functions": [],
@@ -189,8 +210,12 @@
         "searchSvcName": "[if(equals(parameters('searchSvcName'),''), concat(parameters('customerName'), 'kts-srch-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('searchSvcName'))]",
         "searchSvcPeName": "[if(equals(parameters('searchSvcPeName'),''), concat('kts-pe-srch-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('searchSvcPeName'))]",
         "searchSvcPeNicName": "[if(equals(parameters('searchSvcPeNicName'),''), concat('kts-nic-pe-srch-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('searchSvcPeNicName'))]",
+        "docServiceName": "[if(equals(parameters('docServiceName'),''), concat(parameters('customerName'), 'kts-cog-doc-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServiceName'))]",
+        "docServicePeName": "[if(equals(parameters('docServicePeName'),''), concat('kts-pe-cog-doc-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServicePeName'))]",
+        "docServicePeNicName": "[if(equals(parameters('docServicePeNicName'),''), concat('kts-nic-pe-cog-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServicePeNicName'))]",
         "dnsZoneSites": "privatelink.azurewebsites.net",
-        "dnsZoneSearch": "privatelink.search.windows.net"
+        "dnsZoneSearch": "privatelink.search.windows.net",
+        "dnsZoneCognitive": "privatelink.cognitiveservices.azure.com"
     },
     "resources": [
     {
@@ -944,12 +969,33 @@
         "properties": {}
     },
     {
+        "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('searchSvcPeName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('searchSvcPeName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSearch'))]"
+        ],
+        "properties": {
+            "privateDnsZoneConfigs": [
+                {
+                    "name": "privatelink-search-windows-net",
+                    "properties": {
+                        "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSearch'))]"
+                    }
+                }
+            ]
+        }
+    },
+    {
         "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
         "apiVersion": "2018-09-01",
         "name": "[format('{0}/{1}', variables('dnsZoneSearch'), format('{0}-link', variables('dnsZoneSearch')))]",
         "location": "global",
         "dependsOn": [
-            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSearch'))]"
+            "[resourceId('Microsoft.Search/searchServices', variables('searchSvcName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSearch'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
         ],
         "properties": {
             "registrationEnabled": false,
@@ -959,18 +1005,100 @@
         }
     },
     {
-        "type": "Microsoft.Search/searchServices/privateEndpointConnections",
-        "apiVersion": "2022-09-01",
-        "name": "[format('{0}/{1}', variables('searchSvcName'), format('{0}-connection', variables('searchSvcPeName')))]",
+        "type": "Microsoft.CognitiveServices/accounts",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('docServiceName')]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+            "name": "F0"
+        },
+        "kind": "FormRecognizer",
+        "identity": {
+            "type": "None"
+        },
+        "properties": {
+            "customSubDomainName": "[variables('docServiceName')]",
+            "networkAcls": {
+                "defaultAction": "Allow",
+                "virtualNetworkRules": [],
+                "ipRules": []
+            },
+            "publicNetworkAccess": "Disabled"
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('docServicePeName')]",
+        "location": "[resourceGroup().location]",
         "dependsOn": [
-            "[resourceId('Microsoft.Search/searchServices', variables('searchSvcName'))]",
-            "[resourceId('Microsoft.Network/privateEndpoints', variables('searchSvcPeName'))]"
+            "[resourceId('Microsoft.CognitiveServices/accounts', variables('docServiceName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
         ],
         "properties": {
-            "privateEndpoint": {
-                "id": "[resourceId('Microsoft.Network/privateEndpoints', variables('searchSvcPeName'))]"
-            },
-            "groupId": "searchService"
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[variables('docServicePeName')]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('docServicePeName')), concat('/privateLinkServiceConnections/', variables('docServicePeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', variables('docServiceName'))]",
+                        "groupIds": [
+                            "account"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('docServicePeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneCognitive')]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.CognitiveServices/accounts', variables('docServiceName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('docServicePeName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('docServicePeName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneCognitive'))]"
+        ],
+        "properties": {
+            "privateDnsZoneConfigs": [
+                {
+                    "name": "privatelink-cognitiveservices-azure-com",
+                    "properties": {
+                        "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneCognitive'))]"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+        "apiVersion": "2018-09-01",
+        "name": "[format('{0}/{1}', variables('dnsZoneCognitive'), format('{0}-link', variables('dnsZoneCognitive')))]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.CognitiveServices/accounts', variables('docServiceName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneCognitive'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "registrationEnabled": false,
+            "virtualNetwork": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
         }
     }
     ],
