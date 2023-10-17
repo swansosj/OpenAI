@@ -2,6 +2,13 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "customerName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Name of the VNET"
+            }
+        },
         "vnetName": {
             "type": "string",
             "defaultValue": "",
@@ -152,10 +159,10 @@
         "publicIp2Name": "[if(equals(parameters('publicIp2Name'),''), concat('kts-pip-nat-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('publicIp2Name'))]",
         "natGtwy1Name": "[if(equals(parameters('natGtwy1Name'),''), concat('kts-ng-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('natGtwy1Name'))]",
         "natGtwy2Name": "[if(equals(parameters('natGtwy2Name'),''), concat('kts-ng-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('natGtwy2Name'))]",
-        "frontEndAppName": "[if(equals(parameters('frontEndAppName'),''), concat('kts-func-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndAppName'))]",
+        "frontEndAppName": "[if(equals(parameters('frontEndAppName'),''), concat(parameters('customerName'), 'kts-func-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndAppName'))]",
         "frontEndPeName": "[if(equals(parameters('frontEndPeName'),''), concat('kts-pe-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndPeName'))]",
         "frontEndPeNicName": "[if(equals(parameters('frontEndPeNicName'),''), concat('kts-nic-pe-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndPeNicName'))]",
-        "backEndAppName": "[if(equals(parameters('backEndAppName'),''), concat('kts-func-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('backEndAppName'))]",
+        "backEndAppName": "[if(equals(parameters('backEndAppName'),''), concat(parameters('customerName'), 'kts-func-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('backEndAppName'))]",
         "backEndPeName": "[if(equals(parameters('backEndPeName'),''), concat('kts-pe-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('backEndPeName'))]",
         "backEndPeNicName": "[if(equals(parameters('backEndPeNicName'),''), concat('kts-nic-pe-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('backEndPeNicName'))]",
         "dnsZoneSites": "privatelink.azurewebsites.net"
