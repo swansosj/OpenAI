@@ -1086,7 +1086,7 @@
         "name": "[variables('docServiceName')]",
         "location": "[resourceGroup().location]",
         "sku": {
-            "name": "F0"
+            "name": "S0"
         },
         "kind": "FormRecognizer",
         "identity": {
