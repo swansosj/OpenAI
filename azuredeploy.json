@@ -57,6 +57,20 @@
                 "description": "description"
             }
         },
+        "subnet3Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "subnet3Prefix": {
+            "type": "string",
+            "defaultValue": "10.0.2.0/24",
+            "metadata": {
+                "description": "description"
+            }
+        },
         "publicIp1Name": {
             "type": "string",
             "defaultValue": "",
@@ -64,7 +78,21 @@
                 "description": "description"
             }
         },
-        "natGtwyName": {
+        "publicIp2Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "natGtwy1Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "natGtwy2Name": {
             "type": "string",
             "defaultValue": "",
             "metadata": {
@@ -97,9 +125,12 @@
     "variables": {
         "vnetName": "[if(equals(parameters('vnetName'),''), concat('kts-vnet-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('vnetName'))]",
         "subnet1Name": "[if(equals(parameters('subnet1Name'),''), concat('kts-snet-pe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('subnet1Name'))]",
-        "subnet2Name": "[if(equals(parameters('subnet2Name'),''), concat('kts-snet-func-int-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('subnet2Name'))]",
-        "publicIp1Name": "[if(equals(parameters('publicIp1Name'),''), concat('kts-pip-nat-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('publicIp1Name'))]",
-        "natGtwyName": "[if(equals(parameters('natGtwyName'),''), concat('kts-ng-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('natGtwyName'))]",
+        "subnet2Name": "[if(equals(parameters('subnet2Name'),''), concat('kts-snet-func-fe-int-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('subnet2Name'))]",
+        "subnet3Name": "[if(equals(parameters('subnet3Name'),''), concat('kts-snet-func-be-int-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('subnet3Name'))]",
+        "publicIp1Name": "[if(equals(parameters('publicIp1Name'),''), concat('kts-pip-nat-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('publicIp1Name'))]",
+        "publicIp2Name": "[if(equals(parameters('publicIp2Name'),''), concat('kts-pip-nat-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('publicIp2Name'))]",
+        "natGtwy1Name": "[if(equals(parameters('natGtwy1Name'),''), concat('kts-ng-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('natGtwy1Name'))]",
+        "natGtwy2Name": "[if(equals(parameters('natGtwy2Name'),''), concat('kts-ng-be-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('natGtwy2Name'))]",
         "frontEndAppName": "[if(equals(parameters('frontEndAppName'),''), concat('kts-func-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndAppName'))]",
         "frontEndPeName": "[if(equals(parameters('frontEndPeName'),''), concat('kts-pe-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndPeName'))]",
         "frontEndPeNicName": "[if(equals(parameters('frontEndPeNicName'),''), concat('kts-nic-pe-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndPeNicName'))]",
@@ -148,12 +179,40 @@
                 "[parameters('subnet2Prefix')]"
             ],
             "natGateway": {
-                "id": "[resourceId('Microsoft.Network/natGateways', variables('natGtwyName'))]"
+                "id": "[resourceId('Microsoft.Network/natGateways', variables('natGtwy1Name'))]"
             },
             "delegations": [
                 {
                     "name": "Microsoft.Web.serverFarms",
                     "id": "[concat(resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet2Name')), '/delegations/Microsoft.Web.serverFarms')]",
+                    "properties": {
+                        "serviceName": "Microsoft.Web/serverFarms"
+                    },
+                    "type": "Microsoft.Network/virtualNetworks/subnets/delegations"
+                }
+            ],
+            "privateEndpointNetworkPolicies": "Disabled",
+            "privateLinkServiceNetworkPolicies": "Enabled"
+        }
+    },
+    {
+        "type": "Microsoft.Network/virtualNetworks/subnets",
+        "apiVersion": "2023-05-01",
+        "name": "[format('{0}/{1}', variables('vnetName'), variables('subnet3Name'))]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "addressPrefixes": [
+                "[parameters('subnet3Prefix')]"
+            ],
+            "natGateway": {
+                "id": "[resourceId('Microsoft.Network/natGateways', variables('natGtwy2Name'))]"
+            },
+            "delegations": [
+                {
+                    "name": "Microsoft.Web.serverFarms",
+                    "id": "[concat(resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet3Name')), '/delegations/Microsoft.Web.serverFarms')]",
                     "properties": {
                         "serviceName": "Microsoft.Web/serverFarms"
                     },
@@ -184,9 +243,28 @@
         }
     },
     {
+        "name": "[variables('publicIp2Name')]",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "apiVersion": "2023-04-01",
+        "location": "[resourceGroup().location]",
+        "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+        "properties": {
+            "publicIPAddressVersion": "IPv4",
+            "publicIPAllocationMethod": "Static",
+            "idleTimeoutInMinutes": 4,
+            "ipTags": [],
+            "ddosSettings": {
+                    "protectionMode": "VirtualNetworkInherited"
+            }
+        }
+    },
+    {
         "type": "Microsoft.Network/natGateways",
         "apiVersion": "2023-05-01",
-        "name": "[variables('natGtwyName')]",
+        "name": "[variables('natGtwy1Name')]",
         "location": "[resourceGroup().location]",
         "dependsOn": [
             "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIp1Name'))]"
@@ -200,6 +278,27 @@
             "publicIpAddresses": [
                 {
                     "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIp1Name'))]"
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Network/natGateways",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('natGtwy2Name')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIp2Name'))]"
+        ],
+        "sku": {
+            "name": "Standard",
+            "tier": "Regional"
+        },
+        "properties": {
+            "idleTimeoutInMinutes": 4,
+            "publicIpAddresses": [
+                {
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIp2Name'))]"
                 }
             ]
         }
