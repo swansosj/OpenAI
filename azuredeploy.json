@@ -196,6 +196,62 @@
             "metadata": {
                 "description": "description"
             }
+        },
+        "storageAccountBlobPeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountBlobPeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountFilePeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountFilePeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountTablePeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountTablePeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountQuePeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountQuePeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
         }
     },
     "functions": [],
@@ -221,9 +277,21 @@
         "docServicePeName": "[if(equals(parameters('docServicePeName'),''), concat('kts-pe-cog-doc-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServicePeName'))]",
         "docServicePeNicName": "[if(equals(parameters('docServicePeNicName'),''), concat('kts-nic-pe-cog-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('docServicePeNicName'))]",
         "storageAccountName": "[concat(parameters('storageAccountNamePrefix'), uniqueString(subscription().id, resourceGroup().id))]",
+        "storageAccountBlobPeName": "[if(equals(parameters('storageAccountBlobPeName'),''), concat('kts-pe-blob-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountBlobPeName'))]",
+        "storageAccountBlobPeNicName": "[if(equals(parameters('storageAccountBlobPeNicName'),''), concat('kts-nic-pe-blob-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountBlobPeNicName'))]",
+        "storageAccountFilePeName": "[if(equals(parameters('storageAccountFilePeName'),''), concat('kts-pe-file-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountFilePeName'))]",
+        "storageAccountFilePeNicName": "[if(equals(parameters('storageAccountFilePeNicName'),''), concat('kts-nic-pe-file-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountFilePeNicName'))]",
+        "storageAccountTablePeName": "[if(equals(parameters('storageAccountTablePeName'),''), concat('kts-pe-table-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountTablePeName'))]",
+        "storageAccountTablePeNicName": "[if(equals(parameters('storageAccountTablePeNicName'),''), concat('kts-nic-pe-table-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountTablePeNicName'))]",
+        "storageAccountQuePeName": "[if(equals(parameters('storageAccountQuePeName'),''), concat('kts-pe-que-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountQuePeName'))]",
+        "storageAccountQuePeNicName": "[if(equals(parameters('storageAccountQuePeNicName'),''), concat('kts-nic-pe-que-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('storageAccountQuePeNicName'))]",
         "dnsZoneSites": "privatelink.azurewebsites.net",
         "dnsZoneSearch": "privatelink.search.windows.net",
-        "dnsZoneCognitive": "privatelink.cognitiveservices.azure.com"
+        "dnsZoneCognitive": "privatelink.cognitiveservices.azure.com",
+        "dnsZoneBlob": "privatelink.blob.core.windows.net",
+        "dnsZoneFile": "privatelink.file.core.windows.net",
+        "dnsZoneQueue": "privatelink.queue.core.windows.net",
+        "dnsZoneTable": "privatelink.table.core.windows.net"
     },
     "resources": [
     {
@@ -1122,7 +1190,7 @@
         "properties": {
             "dnsEndpointType": "Standard",
             "defaultToOAuthAuthentication": true,
-            "publicNetworkAccess": "Enabled",
+            "publicNetworkAccess": "Disabled",
             "allowCrossTenantReplication": false,
             "minimumTlsVersion": "TLS1_2",
             "allowBlobPublicAccess": true,
@@ -1295,6 +1363,306 @@
             "defaultEncryptionScope": "$account-encryption-key",
             "denyEncryptionScopeOverride": false,
             "publicAccess": "Container"
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('storageAccountBlobPeName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+        ],
+        "properties": {
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[variables('storageAccountBlobPeName')]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountBlobPeName')), concat('/privateLinkServiceConnections/', variables('storageAccountBlobPeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                        "groupIds": [
+                            "blob"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('storageAccountBlobPeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneBlob')]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('docServicePeName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountBlobPeName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneBlob'))]"
+        ],
+        "properties": {
+            "privateDnsZoneConfigs": [
+                {
+                    "name": "privatelink-blob-core-windows-net",
+                    "properties": {
+                        "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneBlob'))]"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+        "apiVersion": "2018-09-01",
+        "name": "[format('{0}/{1}', variables('dnsZoneBlob'), format('{0}-link', variables('dnsZoneBlob')))]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneBlob'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "registrationEnabled": false,
+            "virtualNetwork": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('storageAccountFilePeName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+        ],
+        "properties": {
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[variables('storageAccountFilePeName')]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountFilePeName')), concat('/privateLinkServiceConnections/', variables('storageAccountFilePeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                        "groupIds": [
+                            "file"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('storageAccountFilePeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneFile')]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('storageAccountFilePeName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountFilePeName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneFile'))]"
+        ],
+        "properties": {
+            "privateDnsZoneConfigs": [
+                {
+                    "name": "privatelink-file-core-windows-net",
+                    "properties": {
+                        "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneFile'))]"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+        "apiVersion": "2018-09-01",
+        "name": "[format('{0}/{1}', variables('dnsZoneFile'), format('{0}-link', variables('dnsZoneFile')))]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneFile'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "registrationEnabled": false,
+            "virtualNetwork": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('storageAccountTablePeName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+        ],
+        "properties": {
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[variables('storageAccountFilePeName')]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountFilePeName')), concat('/privateLinkServiceConnections/', variables('storageAccountFilePeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                        "groupIds": [
+                            "table"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('storageAccountTablePeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneTable')]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('storageAccountTablePeName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountTablePeName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneTable'))]"
+        ],
+        "properties": {
+            "privateDnsZoneConfigs": [
+                {
+                    "name": "privatelink-table-core-windows-net",
+                    "properties": {
+                        "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneTable'))]"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+        "apiVersion": "2018-09-01",
+        "name": "[format('{0}/{1}', variables('dnsZoneTable'), format('{0}-link', variables('dnsZoneTable')))]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneTable'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "registrationEnabled": false,
+            "virtualNetwork": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('storageAccountQuePeName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+        ],
+        "properties": {
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[variables('storageAccountQuePeName')]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountQuePeName')), concat('/privateLinkServiceConnections/', variables('storageAccountQuePeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                        "groupIds": [
+                            "queue"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('storageAccountQuePeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneQueue')]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('storageAccountQuePeName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('storageAccountQuePeName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneQueue'))]"
+        ],
+        "properties": {
+            "privateDnsZoneConfigs": [
+                {
+                    "name": "privatelink-queue-core-windows-net",
+                    "properties": {
+                        "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneQueue'))]"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+        "apiVersion": "2018-09-01",
+        "name": "[format('{0}/{1}', variables('dnsZoneQueue'), format('{0}-link', variables('dnsZoneQueue')))]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneQueue'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "registrationEnabled": false,
+            "virtualNetwork": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
         }
     }
     ],
