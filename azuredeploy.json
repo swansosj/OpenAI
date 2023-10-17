@@ -1,0 +1,482 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vnetName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Name of the VNET"
+            }
+        },
+        "environment": {
+            "type": "string",
+            "defaultValue": "prod",
+            "allowedValues": [
+                "prod",
+                "stage",
+                "test",
+                "dev"
+            ],
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "vnetPrefix": {
+            "type": "string",
+            "defaultValue": "10.0.0.0/16",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "subnet1Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "subnet1Prefix": {
+            "type": "string",
+            "defaultValue": "10.0.0.0/24",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "subnet2Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "subnet2Prefix": {
+            "type": "string",
+            "defaultValue": "10.0.1.0/24",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "publicIp1Name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "natGtwyName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "frontEndAppName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "frontEndPeName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "frontEndPeNicName": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "description"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+        "vnetName": "[if(equals(parameters('vnetName'),''), concat('kts-vnet-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('vnetName'))]",
+        "subnet1Name": "[if(equals(parameters('subnet1Name'),''), concat('kts-snet-pe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('subnet1Name'))]",
+        "subnet2Name": "[if(equals(parameters('subnet2Name'),''), concat('kts-snet-func-int-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('subnet2Name'))]",
+        "publicIp1Name": "[if(equals(parameters('publicIp1Name'),''), concat('kts-pip-nat-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('publicIp1Name'))]",
+        "natGtwyName": "[if(equals(parameters('natGtwyName'),''), concat('kts-ng-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('natGtwyName'))]",
+        "frontEndAppName": "[if(equals(parameters('frontEndAppName'),''), concat('kts-func-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndAppName'))]",
+        "frontEndPeName": "[if(equals(parameters('frontEndPeName'),''), concat('kts-pe-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndPeName'))]",
+        "frontEndPeNicName": "[if(equals(parameters('frontEndPeNicName'),''), concat('kts-nic-pe-fe-c2nai-', parameters('environment'),'-',resourceGroup().location,'-000'), parameters('frontEndPeNicName'))]",
+        "dnsZoneSites": "privatelink.azurewebsites.net"
+    },
+    "resources": [
+    {
+        "type": "Microsoft.Network/virtualNetworks",
+        "apiVersion": "2023-04-01",
+        "name": "[variables('vnetName')]",
+        "location": "[resourceGroup().location]",
+        "properties": {
+            "addressSpace": {
+                "addressPrefixes": [
+                    "[parameters('vnetPrefix')]"
+                ]
+            },
+            "subnets": []
+        }
+    },
+    {
+        "type": "Microsoft.Network/virtualNetworks/subnets",
+        "apiVersion": "2023-05-01",
+        "name": "[format('{0}/{1}', variables('vnetName'), variables('subnet1Name'))]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "addressPrefixes": [
+                "[parameters('subnet1Prefix')]"
+            ],
+            "delegations": [],
+            "privateEndpointNetworkPolicies": "Disabled",
+            "privateLinkServiceNetworkPolicies": "Enabled"
+        }
+    },
+    {
+        "type": "Microsoft.Network/virtualNetworks/subnets",
+        "apiVersion": "2023-05-01",
+        "name": "[format('{0}/{1}', variables('vnetName'), variables('subnet2Name'))]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "addressPrefixes": [
+                "[parameters('subnet2Prefix')]"
+            ],
+            "natGateway": {
+                "id": "[resourceId('Microsoft.Network/natGateways', variables('natGtwyName'))]"
+            },
+            "delegations": [
+                {
+                    "name": "Microsoft.Web.serverFarms",
+                    "id": "[concat(resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet2Name')), '/delegations/Microsoft.Web.serverFarms')]",
+                    "properties": {
+                        "serviceName": "Microsoft.Web/serverFarms"
+                    },
+                    "type": "Microsoft.Network/virtualNetworks/subnets/delegations"
+                }
+            ],
+            "privateEndpointNetworkPolicies": "Disabled",
+            "privateLinkServiceNetworkPolicies": "Enabled"
+        }
+    },
+    {
+        "name": "[variables('publicIp1Name')]",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "apiVersion": "2023-04-01",
+        "location": "[resourceGroup().location]",
+        "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+        "properties": {
+            "publicIPAddressVersion": "IPv4",
+            "publicIPAllocationMethod": "Static",
+            "idleTimeoutInMinutes": 4,
+            "ipTags": [],
+            "ddosSettings": {
+                    "protectionMode": "VirtualNetworkInherited"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/natGateways",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('natGtwyName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIp1Name'))]"
+        ],
+        "sku": {
+            "name": "Standard",
+            "tier": "Regional"
+        },
+        "properties": {
+            "idleTimeoutInMinutes": 4,
+            "publicIpAddresses": [
+                {
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIp1Name'))]"
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Web/serverfarms",
+        "apiVersion": "2022-09-01",
+        "name": "[variables('frontEndAppName')]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+            "name": "S1",
+            "tier": "Standard",
+            "size": "S1",
+            "family": "S",
+            "capacity": 1
+        },
+        "kind": "app",
+        "properties": {
+            "perSiteScaling": false,
+            "elasticScaleEnabled": false,
+            "maximumElasticWorkerCount": 1,
+            "isSpot": false,
+            "reserved": false,
+            "isXenon": false,
+            "hyperV": false,
+            "targetWorkerCount": 0,
+            "targetWorkerSizeId": 0,
+            "zoneRedundant": false
+        }
+    },
+    {
+        "type": "Microsoft.Web/sites",
+        "apiVersion": "2022-09-01",
+        "name": "[variables('frontEndAppName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/serverfarms', variables('frontEndAppName'))]"
+        ],
+        "kind": "app",
+        "properties": {
+            "enabled": true,
+            "hostNameSslStates": [
+                {
+                    "name": "[concat(variables('frontEndAppName'), '.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                },
+                {
+                    "name": "[concat(variables('frontEndAppName'), '.scm.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                }
+            ],
+            "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('frontEndAppName'))]",
+            "virtualNetworkSubnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet2Name'))]",
+            "reserved": false,
+            "isXenon": false,
+            "hyperV": false,
+            "vnetRouteAllEnabled": false,
+            "vnetImagePullEnabled": false,
+            "vnetContentShareEnabled": false,
+            "siteConfig": {
+                "numberOfWorkers": 1,
+                "acrUseManagedIdentityCreds": false,
+                "alwaysOn": true,
+                "http20Enabled": false,
+                "functionAppScaleLimit": 0,
+                "minimumElasticInstanceCount": 0
+            },
+            "scmSiteAlsoStopped": false,
+            "clientAffinityEnabled": true,
+            "clientCertEnabled": false,
+            "clientCertMode": "Required",
+            "hostNamesDisabled": false,
+            "containerSize": 0,
+            "dailyMemoryTimeQuota": 0,
+            "httpsOnly": true,
+            "redundancyMode": "None",
+            "publicNetworkAccess": "Enabled",
+            "storageAccountRequired": false,
+            "keyVaultReferenceIdentity": "SystemAssigned"
+        }
+    },
+    {
+        "type": "Microsoft.Web/sites/config",
+        "apiVersion": "2022-09-01",
+        "name": "[concat(variables('frontEndAppName'), '/web')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]"
+        ],
+        "properties": {
+            "numberOfWorkers": 1,
+            "defaultDocuments": [
+                "Default.htm",
+                "Default.html",
+                "Default.asp",
+                "index.htm",
+                "index.html",
+                "iisstart.htm",
+                "default.aspx",
+                "index.php",
+                "hostingstart.html"
+            ],
+            "netFrameworkVersion": "v4.0",
+            "nodeVersion": "~18",
+            "requestTracingEnabled": false,
+            "remoteDebuggingEnabled": false,
+            "remoteDebuggingVersion": "VS2019",
+            "httpLoggingEnabled": false,
+            "acrUseManagedIdentityCreds": false,
+            "logsDirectorySizeLimit": 35,
+            "detailedErrorLoggingEnabled": false,
+            "publishingUsername": "$app-frontend-c2nai-prod",
+            "scmType": "VSTSRM",
+            "use32BitWorkerProcess": true,
+            "webSocketsEnabled": false,
+            "alwaysOn": true,
+            "managedPipelineMode": "Integrated",
+            "virtualApplications": [
+                {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": true
+                }
+            ],
+            "loadBalancing": "LeastRequests",
+            "experiments": {
+                "rampUpRules": []
+            },
+            "autoHealEnabled": false,
+            "vnetRouteAllEnabled": false,
+            "vnetPrivatePortsCount": 0,
+            "publicNetworkAccess": "Enabled",
+            "localMySqlEnabled": false,
+            "ipSecurityRestrictions": [
+                {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 2147483647,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                }
+            ],
+            "scmIpSecurityRestrictions": [
+                {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 2147483647,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                }
+            ],
+            "scmIpSecurityRestrictionsUseMain": false,
+            "http20Enabled": false,
+            "minTlsVersion": "1.2",
+            "scmMinTlsVersion": "1.2",
+            "ftpsState": "FtpsOnly",
+            "preWarmedInstanceCount": 0,
+            "elasticWebAppScaleLimit": 0,
+            "functionsRuntimeScaleMonitoringEnabled": false,
+            "minimumElasticInstanceCount": 0,
+            "azureStorageAccounts": {}
+        }
+    },
+    {
+        "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+        "apiVersion": "2022-09-01",
+        "name": "[concat(variables('frontEndAppName'), '/ftp')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]"
+        ],
+        "properties": {
+            "allow": true
+        }
+    },
+    {
+        "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+        "apiVersion": "2022-09-01",
+        "name": "[concat(variables('frontEndAppName'), '/scm')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]"
+        ],
+        "properties": {
+            "allow": true
+        }
+    },
+    {
+        "type": "Microsoft.Web/sites/hostNameBindings",
+        "apiVersion": "2022-09-01",
+        "name": "[concat(variables('frontEndAppName'), '/', variables('frontEndAppName'), '.azurewebsites.net')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]"
+        ],
+        "properties": {
+            "siteName": "app-frontend-c2nai-prod",
+            "hostNameType": "Verified"
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints",
+        "apiVersion": "2023-05-01",
+        "name": "[variables('frontEndPeName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+        ],
+        "properties": {
+            "privateLinkServiceConnections": [
+                {
+                    "name": "[variables('frontEndPeName')]",
+                    "id": "[concat(resourceId('Microsoft.Network/privateEndpoints', variables('frontEndPeName')), concat('/privateLinkServiceConnections/', variables('frontEndPeName')))]",
+                    "properties": {
+                        "privateLinkServiceId": "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]",
+                        "groupIds": [
+                            "sites"
+                        ]
+                    }
+                }
+            ],
+            "customNetworkInterfaceName": "[variables('frontEndPeNicName')]",
+            "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet1Name'))]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones",
+        "apiVersion": "2018-09-01",
+        "name": "[variables('dnsZoneSites')]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {}
+    },
+    {
+        "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+        "apiVersion": "2023-05-01",
+        "name": "[concat(variables('frontEndPeName'), '/default')]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/privateEndpoints', variables('frontEndPeName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSites'))]"
+        ],
+        "properties": {
+            "privateDnsZoneConfigs": [
+                {
+                    "name": "privatelink-azurewebsites-net",
+                    "properties": {
+                        "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSites'))]"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+        "apiVersion": "2018-09-01",
+        "name": "[format('{0}/{1}', variables('dnsZoneSites'), format('{0}-link', variables('dnsZoneSites')))]",
+        "location": "global",
+        "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('frontEndAppName'))]",
+            "[resourceId('Microsoft.Network/privateDnsZones', variables('dnsZoneSites'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+        ],
+        "properties": {
+            "registrationEnabled": false,
+            "virtualNetwork": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+            }
+        }
+    }
+    ],
+    "outputs": {}
+}
