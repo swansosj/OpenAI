@@ -409,7 +409,6 @@
             "dailyMemoryTimeQuota": 0,
             "httpsOnly": true,
             "redundancyMode": "None",
-            "publicNetworkAccess": "Disabled",
             "storageAccountRequired": false,
             "keyVaultReferenceIdentity": "SystemAssigned"
         }
@@ -464,7 +463,7 @@
             "autoHealEnabled": false,
             "vnetRouteAllEnabled": false,
             "vnetPrivatePortsCount": 0,
-            "publicNetworkAccess": "Enabled",
+            "publicNetworkAccess": "Disabled",
             "localMySqlEnabled": false,
             "ipSecurityRestrictions": [
                 {
@@ -758,7 +757,7 @@
             "autoHealEnabled": false,
             "vnetRouteAllEnabled": false,
             "vnetPrivatePortsCount": 0,
-            "publicNetworkAccess": "Enabled",
+            "publicNetworkAccess": "Disabled",
             "localMySqlEnabled": false,
             "ipSecurityRestrictions": [
                 {
