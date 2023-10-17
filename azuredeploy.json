@@ -639,7 +639,8 @@
         "name": "[variables('backEndAppName')]",
         "location": "[resourceGroup().location]",
         "dependsOn": [
-            "[resourceId('Microsoft.Web/serverfarms', variables('backEndAppName'))]"
+            "[resourceId('Microsoft.Web/serverfarms', variables('backEndAppName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnet3Name'))]"
         ],
         "kind": "app",
         "properties": {
